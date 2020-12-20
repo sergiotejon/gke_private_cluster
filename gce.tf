@@ -1,5 +1,5 @@
 variable "gce_ssh_user" {
-  default     = "stejon"
+  default     = ""
   description = "SSH username"
 }
 
