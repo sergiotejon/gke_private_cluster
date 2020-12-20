@@ -1,0 +1,57 @@
+#!/bin/bash
+
+NET_IFACE=eth0
+GKE_CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name)
+GKE_CLUSTER_LOCAL_IP=$(terraform output -raw kubernetes_cluster_private_endpoint)
+GKE_CLUSTER_PORT=443
+LOCAL_PORT=8443
+BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip)
+BASTION_USER=stejon
+
+if [ ! -f ./terraform.tfvars ] ; then
+   echo "Error: Este script ha de ser ejecutado en el directorio donde se ubica la arquitectura en código con Terraform."; exit 1
+fi
+
+term() { 
+  if [ -f /tmp/bastion.pid ]; then
+	  echo "Finalizando Bastión..." 
+	  kill -TERM "$(cat /tmp/bastion.pid)" 2>/dev/null ; rm /tmp/bastion.pid
+  fi
+}
+
+init() {
+	gcloud container clusters get-credentials $(terraform output -raw kubernetes_cluster_name)
+	kubectl config set clusters.$(kubectl config get-contexts | grep $GKE_CLUSTER_NAME | awk '{print $2}').server https://$GKE_CLUSTER_LOCAL_IP:$LOCAL_PORT
+
+	sudo ip addr add $GKE_CLUSTER_LOCAL_IP/32 dev $NET_IFACE 2> /dev/null
+
+	echo 
+	echo "Se va a lanzar el túnel de acceso API de Kubernetes hacia el bastión..."
+	ssh -o StrictHostKeyChecking=no \
+		-L $GKE_CLUSTER_LOCAL_IP:$LOCAL_PORT:$GKE_CLUSTER_LOCAL_IP:$GKE_CLUSTER_PORT \
+		$BASTION_USER@$BASTION_PUBLIC_IP -N &
+	echo $! > /tmp/bastion.pid
+
+	echo
+	echo "Para cerrar el tunel, parar el proceso a partir de su PID:" 
+	echo "  $ kill $!"
+	echo "o ejecutar:" 
+	echo "  $ $0 stop"
+}
+
+case $1 in
+"start")
+	init
+;;
+"stop")
+	term
+;;
+*)
+	echo "Parámetro inválido. Ejemplo de uso:"
+	echo " $ bastion (start|stop)"
+	echo
+	echo " - start : para iniciar el bastión"
+	echo " - stop  : para deternerlo"
+;;
+esac
+
