@@ -6,7 +6,8 @@ GKE_CLUSTER_LOCAL_IP=$(terraform output -raw kubernetes_cluster_private_endpoint
 GKE_CLUSTER_PORT=443
 LOCAL_PORT=8443
 BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip)
-BASTION_USER=stejon
+BASTION_USER=$(terraform output -raw gce_ssh_user)
+
 
 if [ ! -f ./terraform.tfvars ] ; then
    echo "Error: Este script ha de ser ejecutado en el directorio donde se ubica la arquitectura en código con Terraform."; exit 1

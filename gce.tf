@@ -69,3 +69,8 @@ output "bastion_public_ip" {
   description = "GCE bastion public ip"
 }
 
+output "gce_ssh_user" {
+  value       = var.gce_ssh_user 
+  description = "Usuario de acceso SSH"
+}
+
